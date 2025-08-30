@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\api\GedungController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
@@ -14,8 +15,13 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/pengaduan/all', [PengaduanController::class, 'all']);
     Route::get('/pengaduan/{id}/tanggapan', [TanggapanController::class, 'byPengaduan']);
-    Route::get('/tanggapan', [TanggapanController::class, 'index']); 
-    Route::post('/tanggapan', [TanggapanController::class, 'store']);  
+    Route::get('/tanggapan', [TanggapanController::class, 'index']);
+    Route::post('/tanggapan', [TanggapanController::class, 'store']);
+});
+
+Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
+    Route::get('/gedung', [GedungController::class, "index"]);
+    Route::get('/kelas', [GedungController::class, "index"]);
 });
 
 Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {

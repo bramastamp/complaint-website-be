@@ -16,7 +16,7 @@ class PengaduanController extends Controller
               ->orWhere('user_id', Auth::id());
             })->get();
     }
-        
+
     public function show($id)
     {
         $pengaduan = Pengaduan::with('user')->find($id);
@@ -34,11 +34,12 @@ class PengaduanController extends Controller
             'judul' => 'required|string',
             'isi' => 'required|string',
             'kategori_id' => 'required|exists:kategori_pengaduans,id',
+            'kelas_id' => 'nullable|exists:kelas,id',
             'is_anonymous' => 'boolean',
             'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        
+
         $path = null;
         if ($request->hasFile('gambar')) {
             $path = $request->file('gambar')->store('pengaduan_images', 'public');
@@ -48,6 +49,7 @@ class PengaduanController extends Controller
             'judul' => $request->judul,
             'isi' => $request->isi,
             'kategori_id' => $request->kategori_id,
+            'id_kelas' => $request->id_kelas,
             'is_anonymous' => $request->is_anonymous ?? false,
             'gambar' => $path,
         ]);
@@ -65,6 +67,7 @@ class PengaduanController extends Controller
             'judul' => 'required|string',
             'isi' => 'required|string',
             'kategori_id' => 'required|exists:kategori_pengaduans,id',
+            'id_kelas' => 'required|exists:kelas,id',
             'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
@@ -77,6 +80,7 @@ class PengaduanController extends Controller
             'judul' => $request->judul,
             'isi' => $request->isi,
             'kategori_id' => $request->kategori_id,
+            'id_kelas' => $request->id_kelas,
             'is_anonymous' => true,
             'user_id' => null, // benar-benar anonim
             'gambar' => $path,
@@ -98,6 +102,7 @@ class PengaduanController extends Controller
             'judul' => 'sometimes|string|max:255',
             'isi' => 'sometimes|string',
             'kategori_id' => 'sometimes|exists:kategori,id',
+            'id_kelas' => 'required|exists:kelas,id',
             'is_anonymous' => 'sometimes|boolean',
             'gambar' => 'sometimes|file|image|mimes:jpg,jpeg,png|max:2048',
         ]);

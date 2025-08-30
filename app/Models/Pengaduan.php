@@ -15,6 +15,7 @@ class Pengaduan extends Model
         'judul',
         'isi',
         'kategori_id',
+        'kelas_id',
         'is_anonymous',
         'status',
         'gambar',
@@ -23,6 +24,11 @@ class Pengaduan extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function kelas()
+    {
+        return $this->belongsTo(Kelas::class, "id_kelas");
     }
 
     public function kategori()
