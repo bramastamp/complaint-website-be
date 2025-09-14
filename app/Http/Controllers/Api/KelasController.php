@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
@@ -8,37 +8,68 @@ use Illuminate\Http\Request;
 
 class KelasController extends Controller
 {
+    // GET /api/kelas
     public function index()
     {
-        return Kelas::all();
+        return response()->json([
+            'success' => true,
+            'data' => Kelas::with('gedung')->get()
+        ]);
     }
 
-    public function update(Request $request, $id)
+    // GET /api/kelas/{id}
+    public function show($id)
     {
-        $kelas = Kelas::findOrfail($id);
+        $kelas = Kelas::with('gedung')->find($id);
 
-        if (auth()->user()->role === 'user' || auth()->id() !== $pengaduan->user_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$kelas) {
+            return response()->json(['success' => false, 'message' => 'Kelas not found'], 404);
         }
 
-        $validated = $request->validate([
-            'gedung_id' => 'required|exist:gedungs,id',
-            'nama_kelas' => 'sometimes|string|max:255',
-            'pic' => 'sometimes|string|max:255',
-            'standar_operasional' => 'sometimes|string|max:255',
-            'layout' => 'sometimes|file|image|mimes:jpg,jpeg,png|max:2048'
-        ]);
-
-        $kelas->fill($validated);
-            if ($request->hasFile('layout')) {
-                $path = $request->file('layout')->store('kelas', 'public');
-                $kelas->layout = $path;
-            }
-
-        return response()->json([
-           'message' => 'Kelas berhasil diupdate',
-           'data' => $kelas
-        ]);
+        return response()->json(['success' => true, 'data' => $kelas]);
     }
 
+    // POST /api/kelas
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'id_gedung' => 'required|exists:gedungs,id',
+            'nama_kelas' => 'required|string|max:255',
+            'pic' => 'nullable|string|max:255',
+            'layout' => 'nullable|string|max:255',
+            'standar_operasional' => 'nullable|string|max:255',
+        ]);
+
+        $kelas = Kelas::create($validated);
+
+        return response()->json(['success' => true, 'data' => $kelas], 201);
+    }
+
+    // PUT /api/kelas/{id}
+    public function update(Request $request, $id)
+    {
+        $kelas = Kelas::find($id);
+
+        if (!$kelas) {
+            return response()->json(['success' => false, 'message' => 'Kelas not found'], 404);
+        }
+
+        $kelas->update($request->all());
+
+        return response()->json(['success' => true, 'data' => $kelas]);
+    }
+
+    // DELETE /api/kelas/{id}
+    public function destroy($id)
+    {
+        $kelas = Kelas::find($id);
+
+        if (!$kelas) {
+            return response()->json(['success' => false, 'message' => 'Kelas not found'], 404);
+        }
+
+        $kelas->delete();
+
+        return response()->json(['success' => true, 'message' => 'Kelas deleted']);
+    }
 }

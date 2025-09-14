@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('pengaduans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('kelas_id')->nullable()->constrained('kelas')->onDelete('cascade');
             $table->string('judul');
             $table->text('isi');
             $table->foreignId('kategori_id')->constrained('kategori_pengaduans')->onDelete('cascade');
+            $table->foreignId('kelas_id')->nullable()->constrained('kelas')->onDelete('set null');
             $table->boolean('is_anonymous')->default(false);
             $table->enum('status', ['Terkirim', 'diproses', 'Ditanggapi', 'selesai'])->default('Terkirim');
             $table->timestamps();

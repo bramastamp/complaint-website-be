@@ -13,8 +13,8 @@ class PengaduanController extends Controller
     {
         return Pengaduan::with(['user', 'kategori', 'tanggapans'])->where(function ($q) {
             $q->where('is_anonymous', true)
-              ->orWhere('user_id', Auth::id());
-            })->get();
+                ->orWhere('user_id', Auth::id());
+        })->get();
     }
 
     public function show($id)
@@ -39,26 +39,41 @@ class PengaduanController extends Controller
             'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-
+        // Default null
         $path = null;
+
+        // Kalau ada file gambar
         if ($request->hasFile('gambar')) {
             $path = $request->file('gambar')->store('pengaduan_images', 'public');
         }
 
-        $pengaduan = new Pengaduan([
+        // Siapkan data
+        $data = [
             'judul' => $request->judul,
             'isi' => $request->isi,
             'kategori_id' => $request->kategori_id,
-            'id_kelas' => $request->id_kelas,
+            'kelas_id' => $request->kelas_id,
             'is_anonymous' => $request->is_anonymous ?? false,
-            'gambar' => $path,
-        ]);
+        ];
+
+        // Masukkan gambar hanya kalau ada
+        if ($path) {
+            $data['gambar'] = $path;
+        }
+
+        // Buat pengaduan
+        $pengaduan = new Pengaduan($data);
 
         if (!$pengaduan->is_anonymous && $request->user()) {
             $pengaduan->user_id = $request->user()->id;
         }
 
         $pengaduan->save();
+
+        return response()->json([
+            'message' => 'Pengaduan berhasil dibuat',
+            'data' => $pengaduan->load('kategori', 'kelas')
+        ], 201);
     }
 
     public function storeAsGuest(Request $request)
@@ -67,7 +82,7 @@ class PengaduanController extends Controller
             'judul' => 'required|string',
             'isi' => 'required|string',
             'kategori_id' => 'required|exists:kategori_pengaduans,id',
-            'id_kelas' => 'required|exists:kelas,id',
+            'kelas_id' => 'nullable|exists:kelas,id',
             'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
@@ -80,13 +95,16 @@ class PengaduanController extends Controller
             'judul' => $request->judul,
             'isi' => $request->isi,
             'kategori_id' => $request->kategori_id,
-            'id_kelas' => $request->id_kelas,
+            'kelas_id' => $request->kelas_id,
             'is_anonymous' => true,
             'user_id' => null, // benar-benar anonim
             'gambar' => $path,
         ]);
 
-        return response()->json($pengaduan, 201);
+        return response()->json([
+            'message' => 'Pengaduan berhasil dibuat sebagai tamu',
+            'data' => $pengaduan->load('kategori', 'kelas')
+        ], 201);
     }
 
     public function update(Request $request, $id)
@@ -101,25 +119,25 @@ class PengaduanController extends Controller
         $validated = $request->validate([
             'judul' => 'sometimes|string|max:255',
             'isi' => 'sometimes|string',
-            'kategori_id' => 'sometimes|exists:kategori,id',
-            'id_kelas' => 'required|exists:kelas,id',
+            'kategori_id' => 'sometimes|exists:kategori_pengaduans,id',
+            'kelas_id' => 'sometimes|exists:kelas,id',
             'is_anonymous' => 'sometimes|boolean',
             'gambar' => 'sometimes|file|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-            $pengaduan->fill($validated);
+        $pengaduan->fill($validated);
 
-            if ($request->hasFile('gambar')) {
-                $path = $request->file('gambar')->store('pengaduan', 'public');
-                $pengaduan->gambar = $path;
-            }
+        if ($request->hasFile('gambar')) {
+            $path = $request->file('gambar')->store('pengaduan_images', 'public');
+            $pengaduan->gambar = $path;
+        }
 
-            $pengaduan->save();
+        $pengaduan->save();
 
-            return response()->json([
-                'message' => 'Pengaduan berhasil diupdate',
-                'data' => $pengaduan
-            ]);
+        return response()->json([
+            'message' => 'Pengaduan berhasil diupdate',
+            'data' => $pengaduan
+        ]);
     }
 
     public function updateStatus(Request $request, $id)
