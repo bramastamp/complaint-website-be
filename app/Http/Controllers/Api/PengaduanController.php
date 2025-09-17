@@ -11,7 +11,7 @@ class PengaduanController extends Controller
 {
     public function index()
     {
-        return Pengaduan::with(['user', 'kategori', 'tanggapans'])->where(function ($q) {
+        return Pengaduan::with(['user', 'kategori', 'kelas', 'tanggapans'])->where(function ($q) {
             $q->where('is_anonymous', true)
                 ->orWhere('user_id', Auth::id());
         })->get();
@@ -170,13 +170,13 @@ class PengaduanController extends Controller
 
     public function all()
     {
-        $pengaduans = Pengaduan::with('kategori', 'user')->latest()->get();
+        $pengaduans = Pengaduan::with('kategori', 'user', 'kelas')->latest()->get();
         return response()->json($pengaduans);
     }
 
     public function myPengaduan()
     {
-        return Pengaduan::with(['kategori', 'tanggapans'])
+        return Pengaduan::with(['kategori', 'tanggapans', 'kelas'])
             ->where('user_id', Auth::id())
             ->get();
     }

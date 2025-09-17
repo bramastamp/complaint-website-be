@@ -44,7 +44,6 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
     // Pengaduan & Tanggapan
     Route::get('/pengaduan/all', [PengaduanController::class, 'all']);
-    Route::get('/pengaduan/{id}/tanggapan', [TanggapanController::class, 'byPengaduan']);
     Route::get('/tanggapan', [TanggapanController::class, 'index']);
     Route::post('/tanggapan', [TanggapanController::class, 'store']);
 });
@@ -59,4 +58,5 @@ Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
     Route::get('/pengaduan/{id}', [PengaduanController::class, 'show']);
     Route::put('/pengaduan/{id}', [PengaduanController::class, 'update']);
     Route::delete('/pengaduan/{id}', [PengaduanController::class, 'destroy']);
+    Route::get('/pengaduan/{id}/tanggapan', [TanggapanController::class, 'byPengaduan']);
 });
