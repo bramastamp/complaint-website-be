@@ -13,8 +13,7 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required',
             'email' => 'required|unique:users',
-            'password' => 'required|confirmed',
-            'role' => 'in:user,admin', // validasi role opsional
+            'password' => 'required', // hapus 'confirmed' karena kamu tidak kirim 'password_confirmation'
         ]);
 
         $user = User::create([
@@ -24,7 +23,18 @@ class AuthController extends Controller
             'role' => 'user',
         ]);
 
-        return response()->json(['message' => 'User registered']);
+        $token = $user->createToken('api_token')->plainTextToken;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'User registered successfully',
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+        ]);
     }
 
     public function login(Request $request)
