@@ -2,117 +2,80 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\Pengaduan;
+use App\Http\Controllers\Controller;  // ← WAJIB ADA
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Pengaduan;
+
 
 class PengaduanController extends Controller
 {
+    // =======================
+    // 1. GET ALL (Admin)
+    // =======================
     public function index()
     {
-        return Pengaduan::with(['user', 'kategori', 'kelas', 'tanggapans'])->where(function ($q) {
-            $q->where('is_anonymous', true)
-                ->orWhere('user_id', Auth::id());
-        })->get();
+        return response()->json(Pengaduan::with(['user', 'kategori'])->get());
     }
 
-    public function show($id)
+    // =======================
+    // 2. GET PENGADUAN USER LOGIN
+    // =======================
+    public function myPengaduan()
     {
-        $pengaduan = Pengaduan::with('user')->find($id);
-
-        if (!$pengaduan) {
-            return response()->json(['message' => 'Pengaduan tidak ditemukan'], 404);
-        }
-
-        return response()->json($pengaduan);
+        return response()->json(
+            Pengaduan::where('user_id', Auth::id())->with(['kategori'])->get()
+        );
     }
 
+    // =======================
+    // 3. CREATE PENGADUAN
+    // =======================
     public function store(Request $request)
     {
-        $request->validate([
-            'judul' => 'required|string',
+        $validated = $request->validate([
+            'judul' => 'required|string|max:255',
             'isi' => 'required|string',
             'kategori_id' => 'required|exists:kategori_pengaduans,id',
-            'kelas_id' => 'nullable|exists:kelas,id',
-            'is_anonymous' => 'boolean',
-            'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
         ]);
 
-        // Default null
-        $path = null;
+        $pengaduan = new Pengaduan();
+        $pengaduan->user_id = Auth::id();
+        $pengaduan->judul = $validated['judul'];
+        $pengaduan->isi = $validated['isi'];
+        $pengaduan->kategori_id = $validated['kategori_id'];
 
-        // Kalau ada file gambar
+        // Upload gambar bila ada
         if ($request->hasFile('gambar')) {
-            $path = $request->file('gambar')->store('pengaduan_images', 'public');
-        }
-
-        // Siapkan data
-        $data = [
-            'judul' => $request->judul,
-            'isi' => $request->isi,
-            'kategori_id' => $request->kategori_id,
-            'kelas_id' => $request->kelas_id,
-            'is_anonymous' => $request->is_anonymous ?? false,
-        ];
-
-        // Masukkan gambar hanya kalau ada
-        if ($path) {
-            $data['gambar'] = $path;
-        }
-
-        // Buat pengaduan
-        $pengaduan = new Pengaduan($data);
-
-        if (!$pengaduan->is_anonymous && $request->user()) {
-            $pengaduan->user_id = $request->user()->id;
+            $file = $request->file('gambar')->store('pengaduan', 'public');
+            $pengaduan->gambar = $file;
         }
 
         $pengaduan->save();
 
         return response()->json([
             'message' => 'Pengaduan berhasil dibuat',
-            'data' => $pengaduan->load('kategori', 'kelas')
+            'data' => $pengaduan
         ], 201);
     }
 
-    public function storeAsGuest(Request $request)
-    {
-        $request->validate([
-            'judul' => 'required|string',
-            'isi' => 'required|string',
-            'kategori_id' => 'required|exists:kategori_pengaduans,id',
-            'kelas_id' => 'nullable|exists:kelas,id',
-            'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
-
-        $path = null;
-        if ($request->hasFile('gambar')) {
-            $path = $request->file('gambar')->store('pengaduan_images', 'public');
-        }
-
-        $pengaduan = Pengaduan::create([
-            'judul' => $request->judul,
-            'isi' => $request->isi,
-            'kategori_id' => $request->kategori_id,
-            'kelas_id' => $request->kelas_id,
-            'is_anonymous' => true,
-            'user_id' => null, // benar-benar anonim
-            'gambar' => $path,
-        ]);
-
-        return response()->json([
-            'message' => 'Pengaduan berhasil dibuat sebagai tamu',
-            'data' => $pengaduan->load('kategori', 'kelas')
-        ], 201);
-    }
-
+    // =======================
+    // 4. UPDATE PENGADUAN
+    // =======================
     public function update(Request $request, $id)
     {
         $pengaduan = Pengaduan::findOrFail($id);
 
-        // Hanya pemilik (user) yang bisa update, bukan admin
-        if (auth()->user()->role === 'admin' || auth()->id() !== $pengaduan->user_id) {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // HANYA PEMILIK YANG BOLEH EDIT (ADMIN TIDAK BOLEH)
+        if ($user->role === 'admin' || $user->id !== $pengaduan->user_id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -120,16 +83,20 @@ class PengaduanController extends Controller
             'judul' => 'sometimes|string|max:255',
             'isi' => 'sometimes|string',
             'kategori_id' => 'sometimes|exists:kategori_pengaduans,id',
-            'kelas_id' => 'sometimes|exists:kelas,id',
-            'is_anonymous' => 'sometimes|boolean',
-            'gambar' => 'sometimes|file|image|mimes:jpg,jpeg,png|max:2048',
+            'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
         ]);
 
         $pengaduan->fill($validated);
 
+        // Jika ganti gambar
         if ($request->hasFile('gambar')) {
-            $path = $request->file('gambar')->store('pengaduan_images', 'public');
-            $pengaduan->gambar = $path;
+            // Hapus gambar lama
+            if ($pengaduan->gambar) {
+                Storage::disk('public')->delete($pengaduan->gambar);
+            }
+
+            $file = $request->file('gambar')->store('pengaduan', 'public');
+            $pengaduan->gambar = $file;
         }
 
         $pengaduan->save();
@@ -140,44 +107,47 @@ class PengaduanController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, $id)
-    {
-        $request->validate(['status' => 'required|in:Terkirim,diproses,Ditanggapi,selesai']);
-
-        $pengaduan = Pengaduan::findOrFail($id);
-        if ($request->user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $pengaduan->status = $request->status;
-        $pengaduan->save();
-
-        return response()->json(['message' => 'Status updated']);
-    }
-
+    // =======================
+    // 5. DELETE PENGADUAN
+    // =======================
     public function destroy($id)
     {
         $pengaduan = Pengaduan::findOrFail($id);
 
-        // Jika bukan pemilik dan bukan admin, tolak
-        if ($pengaduan->user_id !== Auth::id() && auth()->user()->role !== 'admin') {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // Hanya pemilik yang boleh hapus (admin juga dilarang)
+        if ($user->role === 'admin' || $user->id !== $pengaduan->user_id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Hapus gambar jika ada
+        if ($pengaduan->gambar) {
+            Storage::disk('public')->delete($pengaduan->gambar);
+        }
+
         $pengaduan->delete();
-        return response()->json(['message' => 'Pengaduan deleted']);
+
+        return response()->json([
+            'message' => 'Pengaduan berhasil dihapus'
+        ]);
+    }
+    // =======================
+// 6. SHOW DETAIL PENGADUAN
+// =======================
+public function show($id)
+{
+    $pengaduan = Pengaduan::with(['user', 'kategori'])->find($id);
+
+    if (!$pengaduan) {
+        return response()->json(['message' => 'Pengaduan tidak ditemukan'], 404);
     }
 
-    public function all()
-    {
-        $pengaduans = Pengaduan::with('kategori', 'user', 'kelas')->latest()->get();
-        return response()->json($pengaduans);
-    }
+    return response()->json($pengaduan);
+}
 
-    public function myPengaduan()
-    {
-        return Pengaduan::with(['kategori', 'tanggapans', 'kelas'])
-            ->where('user_id', Auth::id())
-            ->get();
-    }
 }
