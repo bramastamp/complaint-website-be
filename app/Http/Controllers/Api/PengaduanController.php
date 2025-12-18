@@ -14,9 +14,20 @@ class PengaduanController extends Controller
     // =======================
     // 1. GET ALL (Admin)
     // =======================
-    public function index()
+    public function index() // USER
     {
-        return response()->json(Pengaduan::with(['user', 'kategori'])->get());
+        return response()->json(
+            Pengaduan::where('user_id', Auth::id())
+                ->with(['kategori'])
+                ->get()
+        );
+    }
+
+    public function all() // ADMIN
+    {
+        return response()->json(
+            Pengaduan::with(['user', 'kategori'])->get()
+        );
     }
 
     // =======================
@@ -25,7 +36,7 @@ class PengaduanController extends Controller
     public function myPengaduan()
     {
         return response()->json(
-            Pengaduan::where('user_id', Auth::id())->with(['kategori'])->get()
+            Pengaduan::where('user_id', Auth::id())->with(['user', 'kategori'])->get()
         );
     }
 

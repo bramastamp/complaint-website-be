@@ -59,6 +59,4 @@ Route::middleware(['auth:sanctum', 'role:user,admin'])->group(function () {
     Route::put('/pengaduan/{id}', [PengaduanController::class, 'update']);
     Route::delete('/pengaduan/{id}', [PengaduanController::class, 'destroy']);
     Route::get('/pengaduan/{id}/tanggapan', [TanggapanController::class, 'byPengaduan']);
-    Route::get('/pengaduan/{id}', [PengaduanController::class, 'show']);
-
 });
